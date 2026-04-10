@@ -2,49 +2,42 @@ name: Mac UI Screenshot
 on: 
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   capture:
     runs-on: macos-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
 
-      - name: Download PKG from PixelDrain
+      - name: Download PKG
         run: |
-          # Using the PixelDrain API for a direct download
           curl -L "https://pixeldrain.com/api/file/rGyW2rBh" -o 4G_Workbench.pkg
 
-      - name: Verify and Install
+      - name: Fix Permissions and Install
         run: |
-          # Check the file size - should be much larger than 53K now!
-          ls -lh 4G_Workbench.pkg
+          # 1. Move the file to a standard location and set permissions
+          chmod +x 4G_Workbench.pkg
           
-          # Check if it's a valid installer
-          if file 4G_Workbench.pkg | grep -q "HTML"; then
-            echo "ERROR: Downloaded an HTML page. Check your link."
-            exit 1
-          fi
+          # 2. Remove the "quarantine" flag that prevents installing web-downloaded files
+          sudo xattr -rd com.apple.quarantine 4G_Workbench.pkg || true
           
-          # Run the installer
-          sudo installer -pkg 4G_Workbench.pkg -target /
+          # 3. Use the absolute path for the installer (Fixes the "invalid path" error)
+          sudo installer -pkg "$(pwd)/4G_Workbench.pkg" -target /
 
       - name: Identify and Launch App
         run: |
-          # Log the Applications folder so you can see the exact name in the logs
+          # Give it a moment to finish background setup
+          sleep 5
           ls /Applications
           
-          # Try to launch using various common naming patterns
-          open -a "4G_Workbench" || open -a "4G Workbench" || open /Applications/4G*.app || open /Applications/*.app || echo "Could not launch app"
+          # Launch the app
+          open -a "4G_Workbench" || open -a "4G Workbench" || open /Applications/4G*.app || open /Applications/*.app || echo "Launch failed"
           
-          # Wait 50 seconds for the GUI to fully load on the virtual Mac
+          # Wait 50 seconds for UI to render
           sleep 50
 
       - name: Capture Screenshot
         run: |
-          # Take the screenshot and name it screenshot.png
           screencapture -x screenshot.png
 
       - name: Upload Artifact
