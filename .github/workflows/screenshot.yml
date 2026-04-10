@@ -2,42 +2,52 @@ name: Mac UI Screenshot
 on: 
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   capture:
     runs-on: macos-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
-      - name: Download PKG
+      - name: Download PKG from PixelDrain
         run: |
-          # PASTE YOUR COPIED DIRECT LINK INSIDE THE QUOTES BELOW
-          curl -L "https://limewire.com/d/53YiD#LsNsutO8xg" -o 4G_Workbench.pkg
+          # Using the PixelDrain API for a direct download
+          curl -L "https://pixeldrain.com/api/file/rGyW2rBh" -o 4G_Workbench.pkg
 
-      - name: Install the App
+      - name: Verify and Install
         run: |
-          # Verify the file is not just a tiny HTML file
+          # Check the file size - should be much larger than 53K now!
           ls -lh 4G_Workbench.pkg
+          
+          # Check if it's a valid installer
+          if file 4G_Workbench.pkg | grep -q "HTML"; then
+            echo "ERROR: Downloaded an HTML page. Check your link."
+            exit 1
+          fi
+          
+          # Run the installer
           sudo installer -pkg 4G_Workbench.pkg -target /
 
       - name: Identify and Launch App
         run: |
-          # List apps to log for debugging
+          # Log the Applications folder so you can see the exact name in the logs
           ls /Applications
           
-          # This command looks for anything new in /Applications and tries to open it
-          # It prioritizes your app name but falls back to anything .app
-          open -a "4G_Workbench" || open -a "4G Workbench" || open /Applications/4G*.app || open /Applications/*.app
+          # Try to launch using various common naming patterns
+          open -a "4G_Workbench" || open -a "4G Workbench" || open /Applications/4G*.app || open /Applications/*.app || echo "Could not launch app"
           
-          # Wait 45 seconds for the UI to load
-          sleep 45
+          # Wait 50 seconds for the GUI to fully load on the virtual Mac
+          sleep 50
 
       - name: Capture Screenshot
         run: |
-          # -x means 'do not play camera shutter sound'
+          # Take the screenshot and name it screenshot.png
           screencapture -x screenshot.png
 
-      - name: Upload Screenshot
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: 4G-Workbench-UI
