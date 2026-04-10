@@ -11,34 +11,29 @@ jobs:
 
       - name: Download PKG
         run: |
-          curl -L "https://pixeldrain.com/api/file/rGyW2rBh" -o /tmp/4G_Workbench.pkg
+          curl -L "https://pixeldrain.com/api/file/rGyW2rBh" -o /tmp/app.pkg
 
-      - name: Install and Open
+      - name: Force Extract App
         run: |
-          # 1. Clear all security blocks
-          sudo xattr -cr /tmp/4G_Workbench.pkg || true
+          # 1. Expand the PKG into a temporary folder
+          pkgutil --expand-full /tmp/app.pkg /tmp/expanded
           
-          # 2. Use 'open' instead of 'installer'. 
-          # This triggers the macOS installation UI process in the background.
-          open /tmp/4G_Workbench.pkg
+          # 2. Find the .app folder and move it to /Applications
+          # We look in the Payload or scripts folder (standard PKG structure)
+          find /tmp/expanded -name "*.app" -exec sudo cp -R {} /Applications/ \;
           
-          # 3. Give the installer 30 seconds to start up
-          sleep 30
-          
-          # 4. Check if the app appeared in /Applications automatically
-          # Some installers just copy the app; others need a "Finish" click.
-          # If it's not there, we'll try to find where it went.
+          # 3. List applications to verify it moved
           ls /Applications
 
-      - name: Force Launch and Screenshot
+      - name: Launch and Screenshot
         run: |
-          # Try to launch the app by name or by searching the folder
-          open -a "4G_Workbench" || open /Applications/4G*.app || open /Applications/*.app || echo "Launch failed"
+          # Launch whatever was just moved to Applications
+          open /Applications/*.app || echo "Launch failed"
           
-          # Wait 60 seconds (generous time for the UI to paint)
+          # Wait 60 seconds for the UI to fully load
           sleep 60
           
-          # Capture everything
+          # Capture the screen
           screencapture -x screenshot.png
 
       - name: Upload Artifact
