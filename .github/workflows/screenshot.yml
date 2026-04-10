@@ -1,6 +1,10 @@
 name: Mac UI Screenshot
 on: 
-  workflow_dispatch: # Allows you to click "Run Workflow" manually
+  workflow_dispatch:
+
+# Fixes the Node.js warning by forcing the newer version
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   capture:
@@ -9,32 +13,31 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download PKG from Google Drive
+      - name: Download PKG from Google Drive (Bypass Warning)
         run: |
-          # This uses your file ID: 1oBnf5DaTD1oVOxCHnpNtJPlEOSz7O-zI
-          curl -L "https://drive.google.com/uc?export=download&id=1oBnf5DaTD1oVOxCHnpNtJPlEOSz7O-zI" -o 4G_Workbench.pkg
+          # This script handles the "large file" confirmation from Google Drive
+          FILE_ID="1oBnf5DaTD1oVOxCHnpNtJPlEOSz7O-zI"
+          CONFIRM=$(curl -sc /tmp/gcookie "https://drive.google.com/uc?export=download&id=${FILE_ID}" | grep -o 'confirm=[^&]*' | sed 's/confirm=//')
+          curl -Lb /tmp/gcookie "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" -o 4G_Workbench.pkg
 
       - name: Install the App
         run: |
-          # Installs the package to the virtual Mac
+          # Verify file exists before installing
+          if [ ! -f 4G_Workbench.pkg ]; then echo "Download failed"; exit 1; fi
           sudo installer -pkg 4G_Workbench.pkg -target /
-
-      - name: List Applications (Diagnostic)
-        run: |
-          # This helps confirm the exact name of the installed .app
-          ls /Applications
 
       - name: Launch App and Capture Screenshot
         run: |
-          # 1. Try to open the app. 
-          # Note: If the app name in /Applications is different, 
-          # the log for this step will tell us what it is.
-          open -a "4G_Workbench" || open /Applications/4G_Workbench.app || echo "App not found in standard location"
+          # Give the system a second to register the new app
+          sleep 5
           
-          # 2. Wait 30 seconds for the UI to fully load and appear
-          sleep 30
+          # Launch the app. We use the '&' to run it in background so the script continues
+          open -a "4G_Workbench" &
           
-          # 3. Take a screenshot of the whole screen
+          # Wait 40 seconds for the UI to fully load
+          sleep 40
+          
+          # Capture the screenshot
           screencapture -x screenshot.png
 
       - name: Upload Screenshot Result
