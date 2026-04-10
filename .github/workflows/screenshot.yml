@@ -11,35 +11,34 @@ jobs:
 
       - name: Download PKG
         run: |
-          # Use -f to force and -s to stay silent, but -S to show errors
-          curl -fLsS "https://pixeldrain.com/api/file/rGyW2rBh" -o /tmp/app.pkg
+          curl -L "https://pixeldrain.com/api/file/rGyW2rBh" -o /tmp/4G_Workbench.pkg
 
-      - name: Fix Permissions and Install
+      - name: Install and Open
         run: |
-          # 1. Clean the file flags
-          sudo xattr -cr /tmp/app.pkg || true
+          # 1. Clear all security blocks
+          sudo xattr -cr /tmp/4G_Workbench.pkg || true
           
-          # 2. Check the file type (This will tell us in the logs what it actually is)
-          file /tmp/app.pkg
+          # 2. Use 'open' instead of 'installer'. 
+          # This triggers the macOS installation UI process in the background.
+          open /tmp/4G_Workbench.pkg
           
-          # 3. Try to expand the package first (This often bypasses "invalid path" errors)
-          # If this fails, it means the .pkg itself is corrupted or not a flat package.
-          pkgutil --check-signature /tmp/app.pkg || echo "Signature check failed, proceeding anyway..."
+          # 3. Give the installer 30 seconds to start up
+          sleep 30
           
-          # 4. Use the absolute path with a direct stream install
-          sudo installer -pkg /tmp/app.pkg -target / -verboseR
-
-      - name: Identify and Launch App
-        run: |
-          sleep 10
+          # 4. Check if the app appeared in /Applications automatically
+          # Some installers just copy the app; others need a "Finish" click.
+          # If it's not there, we'll try to find where it went.
           ls /Applications
-          # Find the app and open it
-          open -a "4G_Workbench" || open -a "4G Workbench" || open /Applications/4G*.app || open /Applications/*.app || echo "Launch failed"
-          
-          sleep 50
 
-      - name: Capture Screenshot
+      - name: Force Launch and Screenshot
         run: |
+          # Try to launch the app by name or by searching the folder
+          open -a "4G_Workbench" || open /Applications/4G*.app || open /Applications/*.app || echo "Launch failed"
+          
+          # Wait 60 seconds (generous time for the UI to paint)
+          sleep 60
+          
+          # Capture everything
           screencapture -x screenshot.png
 
       - name: Upload Artifact
