@@ -11,28 +11,31 @@ jobs:
 
       - name: Download PKG
         run: |
-          # Download and force the name to app.pkg in the /tmp directory
-          curl -L "https://pixeldrain.com/api/file/rGyW2rBh" -o /tmp/app.pkg
+          # Use -f to force and -s to stay silent, but -S to show errors
+          curl -fLsS "https://pixeldrain.com/api/file/rGyW2rBh" -o /tmp/app.pkg
 
       - name: Fix Permissions and Install
         run: |
-          # 1. Ensure the file exists and is readable
-          ls -lh /tmp/app.pkg
+          # 1. Clean the file flags
+          sudo xattr -cr /tmp/app.pkg || true
           
-          # 2. Strip quarantine and set permissions
-          sudo xattr -rd com.apple.quarantine /tmp/app.pkg || true
-          chmod 777 /tmp/app.pkg
+          # 2. Check the file type (This will tell us in the logs what it actually is)
+          file /tmp/app.pkg
           
-          # 3. Install from the /tmp directory (bypass GitHub workspace restrictions)
-          sudo installer -pkg /tmp/app.pkg -target /
+          # 3. Try to expand the package first (This often bypasses "invalid path" errors)
+          # If this fails, it means the .pkg itself is corrupted or not a flat package.
+          pkgutil --check-signature /tmp/app.pkg || echo "Signature check failed, proceeding anyway..."
+          
+          # 4. Use the absolute path with a direct stream install
+          sudo installer -pkg /tmp/app.pkg -target / -verboseR
 
       - name: Identify and Launch App
         run: |
-          sleep 5
-          # Look for the app and launch it
+          sleep 10
+          ls /Applications
+          # Find the app and open it
           open -a "4G_Workbench" || open -a "4G Workbench" || open /Applications/4G*.app || open /Applications/*.app || echo "Launch failed"
           
-          # Wait 50 seconds for UI to render
           sleep 50
 
       - name: Capture Screenshot
