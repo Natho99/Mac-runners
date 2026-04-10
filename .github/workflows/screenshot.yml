@@ -2,10 +2,6 @@ name: Mac UI Screenshot
 on: 
   workflow_dispatch:
 
-# Fixes the Node.js warning by forcing the newer version
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   capture:
     runs-on: macos-latest
@@ -13,34 +9,35 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download PKG from Google Drive (Bypass Warning)
+      - name: Download PKG
         run: |
-          # This script handles the "large file" confirmation from Google Drive
-          FILE_ID="1oBnf5DaTD1oVOxCHnpNtJPlEOSz7O-zI"
-          CONFIRM=$(curl -sc /tmp/gcookie "https://drive.google.com/uc?export=download&id=${FILE_ID}" | grep -o 'confirm=[^&]*' | sed 's/confirm=//')
-          curl -Lb /tmp/gcookie "https://drive.google.com/uc?export=download&confirm=${CONFIRM}&id=${FILE_ID}" -o 4G_Workbench.pkg
+          # PASTE YOUR COPIED DIRECT LINK INSIDE THE QUOTES BELOW
+          curl -L "https://limewire.com/d/53YiD#LsNsutO8xg" -o 4G_Workbench.pkg
 
       - name: Install the App
         run: |
-          # Verify file exists before installing
-          if [ ! -f 4G_Workbench.pkg ]; then echo "Download failed"; exit 1; fi
+          # Verify the file is not just a tiny HTML file
+          ls -lh 4G_Workbench.pkg
           sudo installer -pkg 4G_Workbench.pkg -target /
 
-      - name: Launch App and Capture Screenshot
+      - name: Identify and Launch App
         run: |
-          # Give the system a second to register the new app
-          sleep 5
+          # List apps to log for debugging
+          ls /Applications
           
-          # Launch the app. We use the '&' to run it in background so the script continues
-          open -a "4G_Workbench" &
+          # This command looks for anything new in /Applications and tries to open it
+          # It prioritizes your app name but falls back to anything .app
+          open -a "4G_Workbench" || open -a "4G Workbench" || open /Applications/4G*.app || open /Applications/*.app
           
-          # Wait 40 seconds for the UI to fully load
-          sleep 40
-          
-          # Capture the screenshot
+          # Wait 45 seconds for the UI to load
+          sleep 45
+
+      - name: Capture Screenshot
+        run: |
+          # -x means 'do not play camera shutter sound'
           screencapture -x screenshot.png
 
-      - name: Upload Screenshot Result
+      - name: Upload Screenshot
         uses: actions/upload-artifact@v4
         with:
           name: 4G-Workbench-UI
