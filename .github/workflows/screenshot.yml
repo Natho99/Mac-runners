@@ -11,26 +11,25 @@ jobs:
 
       - name: Download PKG
         run: |
-          curl -L "https://pixeldrain.com/api/file/rGyW2rBh" -o 4G_Workbench.pkg
+          # Download and force the name to app.pkg in the /tmp directory
+          curl -L "https://pixeldrain.com/api/file/rGyW2rBh" -o /tmp/app.pkg
 
       - name: Fix Permissions and Install
         run: |
-          # 1. Move the file to a standard location and set permissions
-          chmod +x 4G_Workbench.pkg
+          # 1. Ensure the file exists and is readable
+          ls -lh /tmp/app.pkg
           
-          # 2. Remove the "quarantine" flag that prevents installing web-downloaded files
-          sudo xattr -rd com.apple.quarantine 4G_Workbench.pkg || true
+          # 2. Strip quarantine and set permissions
+          sudo xattr -rd com.apple.quarantine /tmp/app.pkg || true
+          chmod 777 /tmp/app.pkg
           
-          # 3. Use the absolute path for the installer (Fixes the "invalid path" error)
-          sudo installer -pkg "$(pwd)/4G_Workbench.pkg" -target /
+          # 3. Install from the /tmp directory (bypass GitHub workspace restrictions)
+          sudo installer -pkg /tmp/app.pkg -target /
 
       - name: Identify and Launch App
         run: |
-          # Give it a moment to finish background setup
           sleep 5
-          ls /Applications
-          
-          # Launch the app
+          # Look for the app and launch it
           open -a "4G_Workbench" || open -a "4G Workbench" || open /Applications/4G*.app || open /Applications/*.app || echo "Launch failed"
           
           # Wait 50 seconds for UI to render
