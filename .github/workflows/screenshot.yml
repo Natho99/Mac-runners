@@ -1,0 +1,44 @@
+name: Mac UI Screenshot
+on: 
+  workflow_dispatch: # Allows you to click "Run Workflow" manually
+
+jobs:
+  capture:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download PKG from Google Drive
+        run: |
+          # This uses your file ID: 1oBnf5DaTD1oVOxCHnpNtJPlEOSz7O-zI
+          curl -L "https://drive.google.com/uc?export=download&id=1oBnf5DaTD1oVOxCHnpNtJPlEOSz7O-zI" -o 4G_Workbench.pkg
+
+      - name: Install the App
+        run: |
+          # Installs the package to the virtual Mac
+          sudo installer -pkg 4G_Workbench.pkg -target /
+
+      - name: List Applications (Diagnostic)
+        run: |
+          # This helps confirm the exact name of the installed .app
+          ls /Applications
+
+      - name: Launch App and Capture Screenshot
+        run: |
+          # 1. Try to open the app. 
+          # Note: If the app name in /Applications is different, 
+          # the log for this step will tell us what it is.
+          open -a "4G_Workbench" || open /Applications/4G_Workbench.app || echo "App not found in standard location"
+          
+          # 2. Wait 30 seconds for the UI to fully load and appear
+          sleep 30
+          
+          # 3. Take a screenshot of the whole screen
+          screencapture -x screenshot.png
+
+      - name: Upload Screenshot Result
+        uses: actions/upload-artifact@v4
+        with:
+          name: 4G-Workbench-UI
+          path: screenshot.png
